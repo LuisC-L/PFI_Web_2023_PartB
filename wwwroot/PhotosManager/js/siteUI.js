@@ -1,4 +1,3 @@
-//<span class="cmdIcon fa-solid fa-ellipsis-vertical"></span>
 let contentScrollPosition = 0;
 let sortType = "date";
 let keywords = "";
@@ -420,7 +419,40 @@ async function renderPhotoPublication() {
 
 async function renderPhotosList() {
     eraseContent();
-    $("#content").append("<h2> En contruction </h2>");
+    try {
+        const result = await API.GetPhotos();
+
+        if (!result) {
+            throw new Error('Failed to fetch photos.');
+        }
+
+        const { data: photos, ETag } = result;
+
+        for (let i = 0; i < photos.length; i++) {
+            const photo = photos[i];
+
+
+            $("#content").append(`
+                <div class="photosLayout"> 
+                    <div class="photoLayout">
+                        <div class="photoTitleContainer">
+                            <span class="photoTitle">${photo.Title}</span>
+                        </div>
+                        <img src="${photo.Image}" class="photoImage">
+                        <span class="photoCreationDate">${photo.Date}</span>
+                    </div>
+                </div>
+            `);
+        }
+    } catch (error) {
+        console.error('Error fetching photos:', error);
+
+        if (error instanceof TypeError && error.response) {
+            console.error('Full response:', error.response);
+        }
+
+        $("#content").append("<h2>Error fetching photos</h2>");
+    }
 }
 
 function renderVerify() {
@@ -847,16 +879,16 @@ function renderCreateNewPhoto() {
                         id="Title"
                         placeholder="Titre" 
                         required 
-                        RequireMessage = 'Veuillez entrer un titre'
-                        InvalidMessage = 'Titre invalide'/>
+                        RequireMessage='Veuillez entrer un titre'
+                        InvalidMessage='Titre invalide'/>
                 <textarea class="form-control Alpha"
                           name="Description"
                           id="Description"
                           placeholder="Description"
                           required
-                          RequireMessage = 'Veuillez entrer une description'
-                          InvalidMessage = 'Description invalide'/></textarea>
-                          <br/>
+                          RequireMessage='Veuillez entrer une description'
+                          InvalidMessage='Description invalide'></textarea>
+                <br/>
                 <input type="checkbox"
                        name="Share"
                        id="Share">
@@ -869,7 +901,7 @@ function renderCreateNewPhoto() {
                         controlId='Image' 
                         imageSrc='images/no-avatar.png'
                         waitingImage="images/Loading_icon.gif">
-            </div>
+                </div>
             </fieldset>
    
             <input type='submit' name='submit' id='savePhoto' value="Enregistrer" class="form-control btn-primary">
@@ -883,6 +915,8 @@ function renderCreateNewPhoto() {
 
     $("#abortCreatePhotoCmd").on("click", renderPhotos);
     $("#createPhotoForm").on("submit", function (event) {
+        event.preventDefault();
+
         let loggedUser = API.retrieveLoggedUser();
         let photoData = getFormData($("#createPhotoForm"), true);
         let photo = {};
@@ -890,13 +924,31 @@ function renderCreateNewPhoto() {
         photo['Title'] = photoData.Title;
         photo['Description'] = photoData.Description;
         photo['Image'] = photoData.Image;
-        photo['Date'] = new Date(Date.now());
+
+        // Format the date before assigning it to the photo object
+        const formattedDate = formatDate(new Date());
+        photo['Date'] = formattedDate;
+
         photo["Shared"] = photoData.hasOwnProperty("Share");
 
-        event.preventDefault();
         showWaitingGif();
         createPhoto(photo);
     });
+}
+
+function formatDate(date) {
+    const options = {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        second: 'numeric',
+        timeZoneName: 'short',
+    };
+
+    return date.toLocaleString('fr-FR', options);
 }
 
 function getFormData(form, hasCheckBox = false) {
