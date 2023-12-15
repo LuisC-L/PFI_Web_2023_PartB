@@ -221,6 +221,7 @@ class API {
   }
   static GetAccount(userId) {
     API.initHttpState();
+    const authToken = API.retrieveAccessToken();
     return new Promise((resolve) => {
       $.ajax({
         url: serverHost + "/accounts/index/" + userId,
@@ -311,6 +312,9 @@ class API {
   }
   static UpdatePhoto(data) {
     API.initHttpState();
+    if (!data.hasOwnProperty('Date')) {
+        data['Date'] = new Date(); // You may need to adjust this based on your date format
+    }
     return new Promise((resolve) => {
       $.ajax({
         url: serverHost + photos_API + "/" + data.Id,

@@ -11,7 +11,7 @@ export default class Photo extends Model {
         this.addField('Title', 'string');        
         this.addField('Description', 'string');
         this.addField('Image', 'asset');
-        this.addField('Date','integer');
+        this.addField('Date','string');
         this.addField('Shared','boolean');
 
         this.setKey("Title");
