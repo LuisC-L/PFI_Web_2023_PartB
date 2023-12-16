@@ -145,13 +145,12 @@ function connectedUserAvatar() {
 }
 
 function ownerAvatar(photo,isShared = false){
-
     let images = `
         <div class="UserAvatarSmall" id="ownerPhoto" style="background-image:url('${photo.Owner.Avatar}')" title="${photo.OwnerName}"></div></i>        
         `;
     if(isShared){
         images += `
-            <div class="UserAvatarSmall" style="background-color: rgba(255,255,255,50%)" id="ownerPhoto" title="${photo.OwnerName}">
+            <div style="background-color: rgba(255,255,255,50%);border-radius: 60px" id="ownerPhoto" title="${photo.OwnerName}">
             <img class="UserAvatarSmall" src="images/shared.png" alt="">
         </div>
         `;
@@ -620,6 +619,22 @@ function renderModifyPhotoForm(photo) {
         updatedPhoto['Title'] = photoData.Title;
         updatedPhoto['Description'] = photoData.Description;
         updatedPhoto['Image'] = photoData.Image;
+
+        const currentDate = new Date();
+
+        const formattedDate = currentDate.toLocaleString('fr-FR', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: 'numeric',
+            second: 'numeric',
+        });
+
+        const dayOfWeek = formattedDate.split(' ')[0];
+
+        updatedPhoto['Date'] = `${dayOfWeek} le ${formattedDate.slice(formattedDate.indexOf(' ') + 1)}`;
         updatedPhoto['Shared'] = photoData.hasOwnProperty("Share")
         event.preventDefault();
         showWaitingGif();
@@ -1185,7 +1200,6 @@ function renderCreateNewPhoto() {
 
         const dayOfWeek = formattedDate.split(' ')[0];
 
-        // Create the custom date string with "le" and the day of the week
         photo['Date'] = `${dayOfWeek} le ${formattedDate.slice(formattedDate.indexOf(' ') + 1)}`;
         photo["Shared"] = photoData.hasOwnProperty("Share");
         photo["Shared"] = photoData.hasOwnProperty("Share");
