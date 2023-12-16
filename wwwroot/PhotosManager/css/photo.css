@@ -20,6 +20,31 @@
     padding-left: 10px;
 }
 
+.photoContainer {
+    position: relative;
+    display: inline-block;
+}
+.AvatarOverlay {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    display: flex;
+    align-items: flex-start;
+    gap: 5px;
+    z-index: 1;
+}
+
+.AvatarOverlay .UserAvatarSmall {
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    width: 50px;
+    height: 50px;
+    border-radius: 50px;
+    color: white;
+    border: 2px solid white;
+    cursor: pointer;
+}
 
 .photoImage {
     display:flex;

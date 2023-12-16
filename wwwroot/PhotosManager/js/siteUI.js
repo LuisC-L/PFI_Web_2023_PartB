@@ -90,6 +90,12 @@ function attachCmd() {
     $("#editProfileCmd").on("click", renderEditProfileForm);
     $("#aboutCmd").on("click", renderAbout);
 }
+function addLike(){
+    console.log("add like");
+}
+function removeLike(){
+    console.log("remove like");
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Header management
@@ -136,6 +142,21 @@ function connectedUserAvatar() {
             <div class="UserAvatarSmall" userId="${loggedUser.Id}" id="editProfileCmd" style="background-image:url('${loggedUser.Avatar}')" title="${loggedUser.Name}"></div>
         `;
     return "";
+}
+
+function ownerAvatar(photo,isShared = false){
+
+    let images = `
+        <div class="UserAvatarSmall" id="ownerPhoto" style="background-image:url('${photo.Owner.Avatar}')" title="${photo.OwnerName}"></div></i>        
+        `;
+    if(isShared){
+        images += `
+            <div class="UserAvatarSmall" style="background-color: rgba(255,255,255,50%)" id="ownerPhoto" title="${photo.OwnerName}">
+            <img class="UserAvatarSmall" src="images/shared.png" alt="">
+        </div>
+        `;
+    }
+    return images;
 }
 
 function refreshHeader() {
@@ -447,20 +468,22 @@ async function renderPhotoPublication() {
 async function renderPhotosList() {
     eraseContent();
     try {
-        $("#content").append(`<div class="photosLayout">`);
         const result = await API.GetPhotos();
+
+        $("#content").append(`<div class="photosLayout">`);
 
         if (!result) {
             throw new Error('Failed to fetch photos.');
         }
 
         const {data: photos, ETag} = result;
+        let  loggedUser = API.retrieveLoggedUser();
 
         for (let i = 0; i < photos.length; i++) {
             const photo = photos[i];
             let image = photo.Image
-            if (image !== null || image !== undefined || image !== "") {
-                if (photo.OwnerId && API.retrieveLoggedUser().Id) {
+            if (image !== "") {
+                if (photo.OwnerId === loggedUser.Id || loggedUser.isAdmin) {
                     $("#content .photosLayout").append(`
                         <div class="photoLayout">
                             <div class="photoTitleContainer">
@@ -468,37 +491,64 @@ async function renderPhotosList() {
                                 <span><i class="menuIcon fa-solid fa-pencil" data-photo-id="${photo.Id}" id="${photo.Id}modify"></i></span>
                                 <span><i class="menuIcon fa-solid fa-trash" data-photo-id="${photo.Id}" id="${photo.Id}delete"></i></span>
                             </div>
-                            <img src="${photo.Image}" class="photoImage" id="${photo.Id}">
-                            <span class="photoCreationDate">${photo.Date}</span>
+                            <div class="photoContainer">
+                                <div class="AvatarOverlay">
+                                    ${ownerAvatar(photo,photo.Shared)}
+                                </div>
+                                <img src="${photo.Image}" class="photoImage" id="${photo.Id}">
+                            </div>
+                            <span class="photoCreationDate">
+                                ${photo.Date}
+                                <div style="float: right">
+                                    nbLikes
+                                <i class="fa-regular fa-thumbs-up"></i>
+                                </div>
+                            </span>
                         </div>
                     `);
 
                     // Attach click event to the modifyIcon
                     $("#" + photo.Id + "modify").on("click", function (event) {
-                        renderModifyPhotoForm(photo);
+                        if(photo.OwnerId === loggedUser || loggedUser.isAdmin)
+                            renderModifyPhotoForm(photo);
                     });
 
                     // Attach click event to the deleteIcon
                     $("#" + photo.Id + "delete").on("click", function (event) {
-                        renderConfirmDeletePhoto(photo)
+                        if(photo.OwnerId === loggedUser || loggedUser.isAdmin)
+                            renderConfirmDeletePhoto(photo)
                     });
-                } else $("#content .photosLayout").append(`
+                } else{
+                 $("#content .photosLayout").append(`
                 <div class="photoLayout">
                     <div class="photoTitleContainer">
                         <span class="photoTitle">${photo.Title}</span>
                         <span></span>
                     </div>
-                    <img src="${photo.Image}" class="photoImage">
-                    <span class="photoCreationDate">${photo.Date}</span>
+                    <div class="photoContainer">
+                                <div class="AvatarOverlay">
+                                    ${ownerAvatar(photo,photo.Shared)}
+                                </div>
+                                <img src="${photo.Image}" class="photoImage" id="${photo.Id}">
+                            </div>
+                    <span class="photoCreationDate">
+                        ${photo.Date}
+                        <div style="float: right">
+                            nbLikes
+                            <i class="fa-regular fa-thumbs-up" id="${photo.Id}like" ></i>
+                        </div>
+                     </span>
                 </div>
                 `);
 
                 $("#" + photo.Id).on("click", function (event) {
                     renderPhotoDetails(photo);
                 });
+                }
             } else renderError("Erreur avec l'affichage des photos...");
         }
         $("#content").append(`</div>`);
+
     } catch (error) {
         console.error('Error fetching photos:', error);
 
@@ -563,11 +613,10 @@ function renderModifyPhotoForm(photo) {
 
     $("#abortCreatePhotoCmd").on("click", renderPhotos);
     $("#modifyPhotoForm").on("submit", function (event) {
-        let loggedUser = API.retrieveLoggedUser();
         let photoData = getFormData($("#modifyPhotoForm"), true);
         let updatedPhoto = {};
-        updatedPhoto['Id'] = photo.Id; // Assuming photo has an Id property
-        updatedPhoto['OwnerId'] = loggedUser.Id;
+        updatedPhoto['Id'] = photo.Id;
+        updatedPhoto['OwnerId'] = photo.OwnerId;
         updatedPhoto['Title'] = photoData.Title;
         updatedPhoto['Description'] = photoData.Description;
         updatedPhoto['Image'] = photoData.Image;
@@ -580,17 +629,16 @@ function renderModifyPhotoForm(photo) {
 
 async function renderPhotoDetails(photo) {
     eraseContent();
-    let user = (await API.GetAccount(photo.OwnerId)).data;
+    // let user = (await API.GetAccount(photo.OwnerId)).data;
     let loggedUser = API.retrieveLoggedUser();
     UpdateHeader("Détails", "verify");
     $("#newPhotoCmd").hide();
     const imageUrl = photo.Image.startsWith("http") ? photo.Image : `../../assetsRepository/${photo.Image}`;
-    console.log(photo)
     if (loggedUser.Id !== photo.OwnerId) {
         $("#content").append(`
         <div class="menusContainer">
-                <i title="Modifier votre profile" class="photoDetailsOwner">
-                <div class="UserAvatarSmall" id="editProfileCmd" style="background-image:url('${photo.Owner.Avatar}')" title="${photo.OwnerName}"></div></i>
+                <i class="photoDetailsOwner">
+                ${ownerAvatar(photo)}
                 <span class="photoTitleContainer">
                     <span class="UserName" style="margin-left: 5px">${photo.OwnerName}</span>
                 </span>
@@ -602,9 +650,15 @@ async function renderPhotoDetails(photo) {
     $("#content").append(`
         <div class="photoLayout">
             <span class="photoDetailsTitle">${photo.Title}</span>
-            <img src="${imageUrl}" class="photoDetailsLargeImage">
-            <span class="photoDetailsCreationDate">${photo.Date}</span>
-            <span></span>
+            <img class="photoDetailsLargeImage" src="${imageUrl}">
+            <span class="photoDetailsCreationDate">
+                ${photo.Date}    
+                <div style="float: right">
+                    nbLikes
+                    <i class="fa-regular fa-thumbs-up"></i>
+                </div>
+            </span>
+            
             <span class="photoDetailsDescription">${photo.Description}</span>
         </div>
     `);
