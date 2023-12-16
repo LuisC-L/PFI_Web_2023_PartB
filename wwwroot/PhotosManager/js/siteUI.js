@@ -20,12 +20,17 @@ let offset = 0;
 Init_UI();
 
 function Init_UI() {
+    // getViewPortPhotosRanges();
+    // initTimeout(delayTimeOut, renderExpiredSession);
+    // installWindowResizeHandler();
+    // let user = API.retrieveLoggedUser();
+    // if (user && user.VerifyCode === "verified") renderPhotos();
+    // else if (user.VerifyCode !== "verified") renderVerify();
+    // else renderLoginForm();
     getViewPortPhotosRanges();
     initTimeout(delayTimeOut, renderExpiredSession);
     installWindowResizeHandler();
-    let user = API.retrieveLoggedUser();
-    if (user && user.VerifyCode === "verified") renderPhotos();
-    else if (user.VerifyCode !== "verified") renderVerify();
+    if (API.retrieveLoggedUser()) renderPhotos();
     else renderLoginForm();
 }
 
@@ -268,6 +273,7 @@ async function createPhoto(photo) {
         renderError("Problème survenu lors de la création d'une photo");
     }
 }
+
 async function updatePhoto(photo) {
     if (await API.UpdatePhoto(photo)) {
         message =
@@ -277,6 +283,7 @@ async function updatePhoto(photo) {
         renderError("Problème survenu lors de la création d'une photo");
     }
 }
+
 async function deletePhoto(photoId) {
     if (await API.DeletePhoto(photoId)) {
         message =
@@ -447,13 +454,13 @@ async function renderPhotosList() {
             throw new Error('Failed to fetch photos.');
         }
 
-        const { data: photos, ETag } = result;
+        const {data: photos, ETag} = result;
 
         for (let i = 0; i < photos.length; i++) {
             const photo = photos[i];
             let image = photo.Image
-            if (image !== null || image !== undefined || image !== ""){
-                if(photo.OwnerId && API.retrieveLoggedUser().Id){
+            if (image !== null || image !== undefined || image !== "") {
+                if (photo.OwnerId && API.retrieveLoggedUser().Id) {
                     $("#content .photosLayout").append(`
                         <div class="photoLayout">
                             <div class="photoTitleContainer">
@@ -467,16 +474,15 @@ async function renderPhotosList() {
                     `);
 
                     // Attach click event to the modifyIcon
-                    $("#" + photo.Id + "modify").on("click", function(event) {
+                    $("#" + photo.Id + "modify").on("click", function (event) {
                         renderModifyPhotoForm(photo);
                     });
 
                     // Attach click event to the deleteIcon
-                    $("#" + photo.Id + "delete").on("click", function(event) {
+                    $("#" + photo.Id + "delete").on("click", function (event) {
                         renderConfirmDeletePhoto(photo)
                     });
-                }
-                else $("#content .photosLayout").append(`
+                } else $("#content .photosLayout").append(`
                 <div class="photoLayout">
                     <div class="photoTitleContainer">
                         <span class="photoTitle">${photo.Title}</span>
@@ -490,8 +496,7 @@ async function renderPhotosList() {
                 $("#" + photo.Id).on("click", function (event) {
                     renderPhotoDetails(photo);
                 });
-            }
-            else renderError("Erreur avec l'affichage des photos...");
+            } else renderError("Erreur avec l'affichage des photos...");
         }
         $("#content").append(`</div>`);
     } catch (error) {
@@ -504,7 +509,8 @@ async function renderPhotosList() {
         $("#content").append("<h2>Error fetching photos</h2>");
     }
 }
-function renderModifyPhotoForm(photo){
+
+function renderModifyPhotoForm(photo) {
     eraseContent();
     UpdateHeader("Modification de photo", "modifyPhoto");
     $("#newPhotoCmd").hide();
@@ -571,15 +577,31 @@ function renderModifyPhotoForm(photo){
         updatePhoto(updatedPhoto);
     });
 }
-async function renderPhotoDetails(photo){
+
+async function renderPhotoDetails(photo) {
     eraseContent();
     let user = (await API.GetAccount(photo.OwnerId)).data;
+    let loggedUser = API.retrieveLoggedUser();
     UpdateHeader("Détails", "verify");
     $("#newPhotoCmd").hide();
     const imageUrl = photo.Image.startsWith("http") ? photo.Image : `../../assetsRepository/${photo.Image}`;
+    console.log(photo)
+    if (loggedUser.Id !== photo.OwnerId) {
+        $("#content").append(`
+        <div class="menusContainer">
+                <i title="Modifier votre profile" class="photoDetailsOwner">
+                <div class="UserAvatarSmall" id="editProfileCmd" style="background-image:url('${photo.Owner.Avatar}')" title="${photo.OwnerName}"></div></i>
+                <span class="photoTitleContainer">
+                    <span class="UserName" style="margin-left: 5px">${photo.OwnerName}</span>
+                </span>
+            </div>
+            <div class="dropdown-divider"></div>
+    `);
+    }
+
     $("#content").append(`
         <div class="photoLayout">
-            <span class="photoDetailsTitle">${photo.OwnerId}</span>
+            <span class="photoDetailsTitle">${photo.Title}</span>
             <img src="${imageUrl}" class="photoDetailsLargeImage">
             <span class="photoDetailsCreationDate">${photo.Date}</span>
             <span></span>
@@ -587,6 +609,7 @@ async function renderPhotoDetails(photo){
         </div>
     `);
 }
+
 function renderVerify() {
     eraseContent();
     UpdateHeader("Vérification", "verify");
@@ -818,6 +841,7 @@ async function renderConfirmDeleteAccount(userId) {
         }
     }
 }
+
 async function renderConfirmDeletePhoto(photo) {
     timeout();
     let loggedUser = API.retrieveLoggedUser();
@@ -854,6 +878,7 @@ async function renderConfirmDeletePhoto(photo) {
         }
     }
 }
+
 function renderEditProfileForm() {
     timeout();
     let loggedUser = API.retrieveLoggedUser();
@@ -1117,7 +1142,7 @@ function renderCreateNewPhoto() {
     });
 }
 
-function getFormData(form, hasCheckBox = false) {
+function getFormData(form) {
     const removeTag = new RegExp("(<[a-zA-Z0-9]+>)|(</[a-zA-Z0-9]+>)", "g");
     var jsonObject = {};
     console.log(form.serializeArray());
