@@ -72,7 +72,7 @@ class API {
     API.initHttpState();
     return new Promise((resolve) => {
       $.ajax({
-        url: serverHost + API.registerRequestURL(),
+        url: serverHost + "/Accounts/register",
         type: "POST",
         contentType: "application/json",
         data: JSON.stringify(profile),
