@@ -476,6 +476,7 @@ async function renderPhotosList() {
         const {data: photos, ETag} = result;
         let  loggedUser = API.retrieveLoggedUser();
         for (let i = 0; i < photos.length; i++) {
+            
             const photo = photos[i];
             let list = await API.getLikesPhoto(photo);
             let image = photo.Image
