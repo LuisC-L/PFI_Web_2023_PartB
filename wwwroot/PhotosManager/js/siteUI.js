@@ -522,7 +522,7 @@ async function renderPhotosList() {
                     let length2 = 0;
                 
                     list.forEach(like => {
-                        if (photo.Id === like.PhotoId) {
+                        if (photo.Id === like.PhotoId && loggedUser.Id === like.UserId) {
                             $("#like" + photo.Id).removeClass(whiteThumbs).addClass(blueThumbs);
                             length2++;
                         }
