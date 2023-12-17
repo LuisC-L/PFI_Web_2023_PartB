@@ -24,6 +24,7 @@ function Init_UI() {
     initTimeout(delayTimeOut, renderExpiredSession);
     installWindowResizeHandler();
     let user = API.retrieveLoggedUser();
+    renderLoginForm();
     if (user && user.VerifyCode === "verified") renderPhotos();
     else if (user.VerifyCode !== "verified") renderVerify();
     else renderLoginForm();
@@ -450,10 +451,11 @@ async function renderPhotosList() {
         const { data: photos, ETag } = result;
 
         for (let i = 0; i < photos.length; i++) {
+            
             const photo = photos[i];
             let image = photo.Image
             if (image !== null || image !== undefined || image !== ""){
-                if(photo.OwnerId && API.retrieveLoggedUser().Id){
+                if(photo.OwnerId === API.retrieveLoggedUser().Id || API.retrieveLoggedUser().isAdmin){
                     $("#content .photosLayout").append(`
                         <div class="photoLayout">
                             <div class="photoTitleContainer">
