@@ -142,11 +142,11 @@ function connectedUserAvatar() {
     return "";
 }
 
-function ownerAvatar(photo,isShared = false){
+function ownerAvatar(photo, isShared = false) {
     let images = `
         <div class="UserAvatarSmall" id="ownerPhoto" style="background-image:url('${photo.Owner.Avatar}')" title="${photo.OwnerName}"></div></i>        
         `;
-    if(isShared){
+    if (isShared) {
         images += `
             <div style="background-color: rgba(255,255,255,50%);border-radius: 60px" id="ownerPhoto" title="${photo.OwnerName}">
             <img class="UserAvatarSmall" src="images/shared.png" alt="">
@@ -474,13 +474,13 @@ async function renderPhotosList() {
         }
 
         const {data: photos, ETag} = result;
-        let  loggedUser = API.retrieveLoggedUser();
+        let loggedUser = API.retrieveLoggedUser();
         for (let i = 0; i < photos.length; i++) {
-            
+
             const photo = photos[i];
             let list = await API.getLikesPhoto(photo);
             let image = photo.Image
-            let length =0;
+            let length = 0;
             if (image !== "") {
                 if (photo.OwnerId === loggedUser.Id || loggedUser.isAdmin) {
                     $("#content .photosLayout").append(`
@@ -492,15 +492,15 @@ async function renderPhotosList() {
                             </div>
                             <div class="photoContainer">
                                 <div class="AvatarOverlay">
-                                    ${ownerAvatar(photo,photo.Shared)}
+                                    ${ownerAvatar(photo, photo.Shared)}
                                 </div>
                                 <img src="${photo.Image}" class="photoImage" id="${photo.Id}">
                             </div>
                             <span class="photoCreationDate">
                                 ${photo.Date}
                                 <div style="float: right">
-                                    <div id="likeCount" style="float: left;margin-right: 3px;">${length}</div>
-                                <i class="fa-regular fa-thumbs-up" id="like"></i>
+                                    <div id="likeCount${photo.Id}" style="float: left;margin-right: 3px;">${length}</div>
+                                <i class="fa-regular fa-thumbs-up" id="like${photo.Id}"></i>
                                 <div class="LikeContainer">
                                     <div class="likesSummary"></div>
                                 </div>
@@ -509,27 +509,28 @@ async function renderPhotosList() {
                         </div>
                     `);
                     list.forEach(like => {
-                        if (like.UserId === loggedUser.Id && like.PhotoId === photo.Id) {
-                            $("#like").removeClass(whiteThumbs).addClass(blueThumbs);
+                        console.log(photo.Id === like.PhotoId);
+                        if (photo.Id === like.PhotoId) {
+                            $("#like"+photo.Id).removeClass(whiteThumbs).addClass(blueThumbs);
+                            // console.log(like);
                             length++;
-                            $("#likeCount").text(length);
+                            $("#likeCount"+photo.Id).text(length);
                         }
                     });
-
                     $(".LikeContainer").hide();
                     // Attach click event to the modifyIcon
                     $("#" + photo.Id + "modify").on("click", function (event) {
-                        if(photo.OwnerId === loggedUser || loggedUser.isAdmin)
+                        if (photo.OwnerId === loggedUser || loggedUser.isAdmin)
                             renderModifyPhotoForm(photo);
                     });
 
                     // Attach click event to the deleteIcon
                     $("#" + photo.Id + "delete").on("click", function (event) {
-                        if(photo.OwnerId === loggedUser || loggedUser.isAdmin)
+                        if (photo.OwnerId === loggedUser || loggedUser.isAdmin)
                             renderConfirmDeletePhoto(photo)
                     });
-                } else{
-                 $("#content .photosLayout").append(`
+                } else {
+                    $("#content .photosLayout").append(`
                 <div class="photoLayout">
                     <div class="photoTitleContainer">
                         <span class="photoTitle">${photo.Title}</span>
@@ -537,7 +538,7 @@ async function renderPhotosList() {
                     </div>
                     <div class="photoContainer">
                                 <div class="AvatarOverlay">
-                                    ${ownerAvatar(photo,photo.Shared)}
+                                    ${ownerAvatar(photo, photo.Shared)}
                                 </div>
                                 <img src="${photo.Image}" class="photoImage" id="${photo.Id}">
                             </div>
@@ -673,7 +674,7 @@ async function renderPhotoDetails(photo) {
     let list = await API.getLikesPhoto(photo.Id);
     likeDetail = 0;
     list.forEach(like => {
-        if(like.PhotoId === photo.Id)
+        if (like.PhotoId === photo.Id)
             likeDetail++;
     });
     $("#content").append(`
@@ -696,40 +697,41 @@ async function renderPhotoDetails(photo) {
             <span class="photoDetailsDescription">${photo.Description}</span>
         </div>
     `);
-    await getLikesList(photo,loggedUser,list);
-    await cmdPhotoDetails(photo,loggedUser,true,list);
+    await getLikesList(photo, loggedUser, list);
+    await cmdPhotoDetails(photo, loggedUser, true, list);
 }
-async function cmdPhotoDetails(photo,loggedUser,inDetails = false,list){
+
+async function cmdPhotoDetails(photo, loggedUser, inDetails = false, list) {
     let likeData = {}
     likeData['UserId'] = loggedUser.Id;
     likeData['PhotoId'] = photo.Id;
-    likeData['UserAndPhotoId'] = loggedUser.Id+photo.Id;
+    likeData['UserAndPhotoId'] = loggedUser.Id + photo.Id;
     let like = $("#like");
     let likeInfo = $(".LikeContainer");
     likeInfo.hide();
     like.hover(
-        function (e){
+        function (e) {
             likeInfo.show();
         },
-        function (e){
+        function (e) {
             likeInfo.hide();
         }
     );
     likeInfo.hover(
-        function (e){
+        function (e) {
             likeInfo.show();
         },
-        function (e){
+        function (e) {
             likeInfo.hide();
         }
     );
 
-    like.on("click",function (e){
-        if(inDetails){
-            if(like.attr("class") === whiteThumbs){
+    like.on("click", function (e) {
+        if (inDetails) {
+            if (like.attr("class") === whiteThumbs) {
                 like.removeClass(whiteThumbs).addClass(blueThumbs);
                 API.LikePhoto(likeData)
-            }else if(blueThumbs){
+            } else if (blueThumbs) {
                 let idLike = "";
                 like.removeClass(blueThumbs).addClass(whiteThumbs);
                 list.forEach(like => {
@@ -743,25 +745,30 @@ async function cmdPhotoDetails(photo,loggedUser,inDetails = false,list){
         }
     });
 }
-async function UpdateLike(photo){
+
+async function UpdateLike(photo) {
     let likes = await API.getLikesPhoto();
-    likeDetail =0;
+    let loggedUser = await API.retrieveLoggedUser();
+    likeDetail = 0;
     likes.forEach(like => {
-        if(like.PhotoId === photo.Id)
+        if (loggedUser.Id+photo.Id === like.UserAndPhotoId)
             likeDetail++;
     });
     $("#likeCount").text(likeDetail);
 }
-async function getLikesList(photo,loggedUser,list){
+
+async function getLikesList(photo, loggedUser, list) {
 
     let likeInfo = $(".likesSummary");
     for (let i = 0; i < list.length; i++) {
         let user = await API.GetAccount(list[i].UserId);
-        if(loggedUser.Id === user.data.Id && photo.Id === list[i].PhotoId)
+        if (loggedUser.Id+photo.Id === list[i].UserAndPhotoId){
             $("#like").removeClass(whiteThumbs).addClass(blueThumbs);
-        likeInfo.append(`
-        <span>${user.data.Name}</span><br>
-        `);
+
+            likeInfo.append(`
+            <span>${user.data.Name}</span><br>
+            `);
+        }
     }
 }
 
