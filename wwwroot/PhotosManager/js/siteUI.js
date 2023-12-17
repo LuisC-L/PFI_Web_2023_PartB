@@ -509,7 +509,6 @@ async function renderPhotosList() {
                         </div>
                     `);
                     list.forEach(like => {
-                        console.log(photo.Id === like.PhotoId);
                         if (photo.Id === like.PhotoId) {
                             $("#like"+photo.Id).removeClass(whiteThumbs).addClass(blueThumbs);
                             // console.log(like);
@@ -765,9 +764,11 @@ async function getLikesList(photo, loggedUser, list) {
         if (loggedUser.Id+photo.Id === list[i].UserAndPhotoId){
             $("#like").removeClass(whiteThumbs).addClass(blueThumbs);
 
+        }
+        if(photo.Id === list[i].PhotoId){
             likeInfo.append(`
-            <span>${user.data.Name}</span><br>
-            `);
+                <span>${user.data.Name}</span><br>
+                `);
         }
     }
 }
