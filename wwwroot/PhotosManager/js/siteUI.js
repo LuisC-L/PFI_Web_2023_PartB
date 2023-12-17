@@ -16,17 +16,25 @@ let limit;
 let HorizontalPhotosCount;
 let VerticalPhotosCount;
 let offset = 0;
+//
+let whiteThumbs = "fa-regular fa-thumbs-up";
+let blueThumbs = "fa fa-thumbs-up";
+let likeDetail = 0;
 
 Init_UI();
 
 function Init_UI() {
+    // getViewPortPhotosRanges();
+    // initTimeout(delayTimeOut, renderExpiredSession);
+    // installWindowResizeHandler();
+    // let user = API.retrieveLoggedUser();
+    // if (user && user.VerifyCode === "verified") renderPhotos();
+    // else if (user.VerifyCode !== "verified") renderVerify();
+    // else renderLoginForm();
     getViewPortPhotosRanges();
     initTimeout(delayTimeOut, renderExpiredSession);
     installWindowResizeHandler();
-    let user = API.retrieveLoggedUser();
-    renderLoginForm();
-    if (user && user.VerifyCode === "verified") renderPhotos();
-    else if (user.VerifyCode !== "verified") renderVerify();
+    if (API.retrieveLoggedUser()) renderPhotos();
     else renderLoginForm();
 }
 
@@ -40,12 +48,12 @@ function getViewPortPhotosRanges() {
         $("#content").innerWidth() / photoContainerWidth
     );
     limit = (VerticalPhotosCount + 1) * HorizontalPhotosCount;
-    console.log(
-        "VerticalPhotosCount:",
-        VerticalPhotosCount,
-        "HorizontalPhotosCount:",
-        HorizontalPhotosCount
-    );
+    // console.log(
+    //     "VerticalPhotosCount:",
+    //     VerticalPhotosCount,
+    //     "HorizontalPhotosCount:",
+    //     HorizontalPhotosCount
+    // );
     offset = 0;
 }
 
@@ -132,6 +140,20 @@ function connectedUserAvatar() {
             <div class="UserAvatarSmall" userId="${loggedUser.Id}" id="editProfileCmd" style="background-image:url('${loggedUser.Avatar}')" title="${loggedUser.Name}"></div>
         `;
     return "";
+}
+
+function ownerAvatar(photo,isShared = false){
+    let images = `
+        <div class="UserAvatarSmall" id="ownerPhoto" style="background-image:url('${photo.Owner.Avatar}')" title="${photo.OwnerName}"></div></i>        
+        `;
+    if(isShared){
+        images += `
+            <div style="background-color: rgba(255,255,255,50%);border-radius: 60px" id="ownerPhoto" title="${photo.OwnerName}">
+            <img class="UserAvatarSmall" src="images/shared.png" alt="">
+        </div>
+        `;
+    }
+    return images;
 }
 
 function refreshHeader() {
@@ -269,6 +291,7 @@ async function createPhoto(photo) {
         renderError("Problème survenu lors de la création d'une photo");
     }
 }
+
 async function updatePhoto(photo) {
     if (await API.UpdatePhoto(photo)) {
         message =
@@ -278,6 +301,7 @@ async function updatePhoto(photo) {
         renderError("Problème survenu lors de la création d'une photo");
     }
 }
+
 async function deletePhoto(photoId) {
     if (await API.DeletePhoto(photoId)) {
         message =
@@ -441,21 +465,24 @@ async function renderPhotoPublication() {
 async function renderPhotosList() {
     eraseContent();
     try {
-        $("#content").append(`<div class="photosLayout">`);
         const result = await API.GetPhotos();
+
+        $("#content").append(`<div class="photosLayout">`);
 
         if (!result) {
             throw new Error('Failed to fetch photos.');
         }
 
-        const { data: photos, ETag } = result;
-
+        const {data: photos, ETag} = result;
+        let  loggedUser = API.retrieveLoggedUser();
         for (let i = 0; i < photos.length; i++) {
             
             const photo = photos[i];
+            let list = await API.getLikesPhoto(photo);
             let image = photo.Image
-            if (image !== null || image !== undefined || image !== ""){
-                if(photo.OwnerId === API.retrieveLoggedUser().Id || API.retrieveLoggedUser().isAdmin){
+            let length =0;
+            if (image !== "") {
+                if (photo.OwnerId === loggedUser.Id || loggedUser.isAdmin) {
                     $("#content .photosLayout").append(`
                         <div class="photoLayout">
                             <div class="photoTitleContainer">
@@ -463,37 +490,72 @@ async function renderPhotosList() {
                                 <span><i class="menuIcon fa-solid fa-pencil" data-photo-id="${photo.Id}" id="${photo.Id}modify"></i></span>
                                 <span><i class="menuIcon fa-solid fa-trash" data-photo-id="${photo.Id}" id="${photo.Id}delete"></i></span>
                             </div>
-                            <img src="${photo.Image}" class="photoImage" id="${photo.Id}">
-                            <span class="photoCreationDate">${photo.Date}</span>
+                            <div class="photoContainer">
+                                <div class="AvatarOverlay">
+                                    ${ownerAvatar(photo,photo.Shared)}
+                                </div>
+                                <img src="${photo.Image}" class="photoImage" id="${photo.Id}">
+                            </div>
+                            <span class="photoCreationDate">
+                                ${photo.Date}
+                                <div style="float: right">
+                                    <div id="likeCount" style="float: left;margin-right: 3px;">${length}</div>
+                                <i class="fa-regular fa-thumbs-up" id="like"></i>
+                                <div class="LikeContainer">
+                                    <div class="likesSummary"></div>
+                                </div>
+                                </div>
+                            </span>
                         </div>
                     `);
+                    list.forEach(like => {
+                        if (like.UserId === loggedUser.Id && like.PhotoId === photo.Id) {
+                            $("#like").removeClass(whiteThumbs).addClass(blueThumbs);
+                            length++;
+                            $("#likeCount").text(length);
+                        }
+                    });
 
+                    $(".LikeContainer").hide();
                     // Attach click event to the modifyIcon
-                    $("#" + photo.Id + "modify").on("click", function(event) {
-                        renderModifyPhotoForm(photo);
+                    $("#" + photo.Id + "modify").on("click", function (event) {
+                        if(photo.OwnerId === loggedUser || loggedUser.isAdmin)
+                            renderModifyPhotoForm(photo);
                     });
 
                     // Attach click event to the deleteIcon
-                    $("#" + photo.Id + "delete").on("click", function(event) {
-                        renderConfirmDeletePhoto(photo)
+                    $("#" + photo.Id + "delete").on("click", function (event) {
+                        if(photo.OwnerId === loggedUser || loggedUser.isAdmin)
+                            renderConfirmDeletePhoto(photo)
                     });
-                }
-                else $("#content .photosLayout").append(`
+                } else{
+                 $("#content .photosLayout").append(`
                 <div class="photoLayout">
                     <div class="photoTitleContainer">
                         <span class="photoTitle">${photo.Title}</span>
                         <span></span>
                     </div>
-                    <img src="${photo.Image}" class="photoImage">
-                    <span class="photoCreationDate">${photo.Date}</span>
+                    <div class="photoContainer">
+                                <div class="AvatarOverlay">
+                                    ${ownerAvatar(photo,photo.Shared)}
+                                </div>
+                                <img src="${photo.Image}" class="photoImage" id="${photo.Id}">
+                            </div>
+                    <span class="photoCreationDate">
+                        ${photo.Date}
+                        <div style="float: right">
+                            nbLikes
+                            <i class="fa-regular fa-thumbs-up" id="${photo.Id}like" ></i>
+                        </div>
+                     </span>
                 </div>
                 `);
+                }
 
                 $("#" + photo.Id).on("click", function (event) {
                     renderPhotoDetails(photo);
                 });
-            }
-            else renderError("Erreur avec l'affichage des photos...");
+            } else renderError("Erreur avec l'affichage des photos...");
         }
         $("#content").append(`</div>`);
     } catch (error) {
@@ -506,7 +568,8 @@ async function renderPhotosList() {
         $("#content").append("<h2>Error fetching photos</h2>");
     }
 }
-function renderModifyPhotoForm(photo){
+
+function renderModifyPhotoForm(photo) {
     eraseContent();
     UpdateHeader("Modification de photo", "modifyPhoto");
     $("#newPhotoCmd").hide();
@@ -559,36 +622,149 @@ function renderModifyPhotoForm(photo){
 
     $("#abortCreatePhotoCmd").on("click", renderPhotos);
     $("#modifyPhotoForm").on("submit", function (event) {
-        let loggedUser = API.retrieveLoggedUser();
         let photoData = getFormData($("#modifyPhotoForm"), true);
         let updatedPhoto = {};
-        updatedPhoto['Id'] = photo.Id; // Assuming photo has an Id property
-        updatedPhoto['OwnerId'] = loggedUser.Id;
+        updatedPhoto['Id'] = photo.Id;
+        updatedPhoto['OwnerId'] = photo.OwnerId;
         updatedPhoto['Title'] = photoData.Title;
         updatedPhoto['Description'] = photoData.Description;
         updatedPhoto['Image'] = photoData.Image;
+
+        const currentDate = photo.Date;
+
+        const formattedDate = currentDate.toLocaleString('fr-FR', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: 'numeric',
+            second: 'numeric',
+        });
+
+        const dayOfWeek = formattedDate.split(' ')[0];
+
+        updatedPhoto['Date'] = `${dayOfWeek} le ${formattedDate.slice(formattedDate.indexOf(' ') + 1)}`;
         updatedPhoto['Shared'] = photoData.hasOwnProperty("Share")
         event.preventDefault();
         showWaitingGif();
         updatePhoto(updatedPhoto);
     });
 }
-async function renderPhotoDetails(photo){
+
+async function renderPhotoDetails(photo) {
     eraseContent();
-    let user = (await API.GetAccount(photo.OwnerId)).data;
+    let loggedUser = API.retrieveLoggedUser();
     UpdateHeader("Détails", "verify");
     $("#newPhotoCmd").hide();
     const imageUrl = photo.Image.startsWith("http") ? photo.Image : `../../assetsRepository/${photo.Image}`;
+    if (loggedUser.Id !== photo.OwnerId) {
+        $("#content").append(`
+        <div class="menusContainer">
+                <i class="photoDetailsOwner">
+                ${ownerAvatar(photo)}
+                <span class="photoTitleContainer">
+                    <span class="UserName" style="margin-left: 5px">${photo.OwnerName}</span>
+                </span>
+            </div>
+            <div class="dropdown-divider"></div>
+    `);
+    }
+    let list = await API.getLikesPhoto(photo.Id);
+    likeDetail = 0;
+    list.forEach(like => {
+        if(like.PhotoId === photo.Id)
+            likeDetail++;
+    });
     $("#content").append(`
         <div class="photoLayout">
-            <span class="photoDetailsTitle">${photo.OwnerId}</span>
-            <img src="${imageUrl}" class="photoDetailsLargeImage">
-            <span class="photoDetailsCreationDate">${photo.Date}</span>
-            <span></span>
+            <span class="photoDetailsTitle">${photo.Title}</span>
+            <img class="photoDetailsLargeImage" src="${imageUrl}">
+            <span class="photoDetailsCreationDate">
+                ${photo.Date}    
+                <div style="float: right">
+                    <div id="likeCount" style="float: left;margin-right: 3px;">${likeDetail}</div>
+                    <i class="fa-regular fa-thumbs-up" id="like"></i>
+                    
+                    <div class="LikeContainer">
+                        <div class="likesSummary">
+                        </div>
+                    </div>
+                </div>
+            </span>
+            
             <span class="photoDetailsDescription">${photo.Description}</span>
         </div>
     `);
+    await getLikesList(photo,loggedUser,list);
+    await cmdPhotoDetails(photo,loggedUser,true,list);
 }
+async function cmdPhotoDetails(photo,loggedUser,inDetails = false,list){
+    let likeData = {}
+    likeData['UserId'] = loggedUser.Id;
+    likeData['PhotoId'] = photo.Id;
+    likeData['UserAndPhotoId'] = loggedUser.Id+photo.Id;
+    let like = $("#like");
+    let likeInfo = $(".LikeContainer");
+    likeInfo.hide();
+    like.hover(
+        function (e){
+            likeInfo.show();
+        },
+        function (e){
+            likeInfo.hide();
+        }
+    );
+    likeInfo.hover(
+        function (e){
+            likeInfo.show();
+        },
+        function (e){
+            likeInfo.hide();
+        }
+    );
+
+    like.on("click",function (e){
+        if(inDetails){
+            if(like.attr("class") === whiteThumbs){
+                like.removeClass(whiteThumbs).addClass(blueThumbs);
+                API.LikePhoto(likeData)
+            }else if(blueThumbs){
+                let idLike = "";
+                like.removeClass(blueThumbs).addClass(whiteThumbs);
+                list.forEach(like => {
+                    if (like.UserId === loggedUser.Id && like.PhotoId === photo.Id) {
+                        idLike = like.Id;
+                    }
+                });
+                API.dislikePhoto(idLike);
+            }
+            UpdateLike(photo);
+        }
+    });
+}
+async function UpdateLike(photo){
+    let likes = await API.getLikesPhoto();
+    likeDetail =0;
+    likes.forEach(like => {
+        if(like.PhotoId === photo.Id)
+            likeDetail++;
+    });
+    $("#likeCount").text(likeDetail);
+}
+async function getLikesList(photo,loggedUser,list){
+
+    let likeInfo = $(".likesSummary");
+    for (let i = 0; i < list.length; i++) {
+        let user = await API.GetAccount(list[i].UserId);
+        if(loggedUser.Id === user.data.Id && photo.Id === list[i].PhotoId)
+            $("#like").removeClass(whiteThumbs).addClass(blueThumbs);
+        likeInfo.append(`
+        <span>${user.data.Name}</span><br>
+        `);
+    }
+}
+
 function renderVerify() {
     eraseContent();
     UpdateHeader("Vérification", "verify");
@@ -820,6 +996,7 @@ async function renderConfirmDeleteAccount(userId) {
         }
     }
 }
+
 async function renderConfirmDeletePhoto(photo) {
     timeout();
     let loggedUser = API.retrieveLoggedUser();
@@ -856,6 +1033,7 @@ async function renderConfirmDeletePhoto(photo) {
         }
     }
 }
+
 function renderEditProfileForm() {
     timeout();
     let loggedUser = API.retrieveLoggedUser();
@@ -1108,7 +1286,6 @@ function renderCreateNewPhoto() {
 
         const dayOfWeek = formattedDate.split(' ')[0];
 
-        // Create the custom date string with "le" and the day of the week
         photo['Date'] = `${dayOfWeek} le ${formattedDate.slice(formattedDate.indexOf(' ') + 1)}`;
         photo["Shared"] = photoData.hasOwnProperty("Share");
         photo["Shared"] = photoData.hasOwnProperty("Share");
@@ -1119,7 +1296,7 @@ function renderCreateNewPhoto() {
     });
 }
 
-function getFormData(form, hasCheckBox = false) {
+function getFormData(form) {
     const removeTag = new RegExp("(<[a-zA-Z0-9]+>)|(</[a-zA-Z0-9]+>)", "g");
     var jsonObject = {};
     console.log(form.serializeArray());

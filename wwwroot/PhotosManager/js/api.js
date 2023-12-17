@@ -72,7 +72,7 @@ class API {
     API.initHttpState();
     return new Promise((resolve) => {
       $.ajax({
-        url: serverHost + "/accounts/register",
+        url: serverHost + API.registerRequestURL(),
         type: "POST",
         contentType: "application/json",
         data: JSON.stringify(profile),
@@ -313,7 +313,7 @@ class API {
   static UpdatePhoto(data) {
     API.initHttpState();
     if (!data.hasOwnProperty('Date')) {
-        data['Date'] = new Date(); // You may need to adjust this based on your date format
+        data['Date'] = new Date();
     }
     return new Promise((resolve) => {
       $.ajax({
@@ -337,6 +337,59 @@ class API {
     return new Promise((resolve) => {
       $.ajax({
         url: serverHost + photos_API + "/" + id,
+        type: "DELETE",
+        headers: API.getBearerAuthorizationToken(),
+        success: () => {
+          resolve(true);
+        },
+        error: (xhr) => {
+          API.setHttpErrorState(xhr);
+          resolve(false);
+        },
+      });
+    });
+  }
+  static LikePhoto(likeData) {
+    API.initHttpState();
+    return new Promise((resolve) => {
+      $.ajax({
+        url: serverHost + photoLikes_API,
+        type: "POST",
+        headers: API.getBearerAuthorizationToken(),
+        contentType: "application/json",
+        data: JSON.stringify(likeData),
+        success: (data) => {
+          resolve(data);
+        },
+        error: (xhr) => {
+          API.setHttpErrorState(xhr);
+          resolve(false);
+        },
+      });
+    });
+  }
+  static getLikesPhoto(queryString = null){
+    API.initHttpState();
+    return new Promise((resolve) => {
+      $.ajax({
+        url: serverHost + photoLikes_API,
+        type: "GET",
+        headers: API.getBearerAuthorizationToken(),
+        success: (data) => {
+          resolve(data);
+        },
+        error: (xhr) => {
+          API.setHttpErrorState(xhr);
+          resolve(false);
+        },
+      });
+    });
+  }
+  static dislikePhoto(likeData) {
+    API.initHttpState();
+    return new Promise((resolve) => {
+      $.ajax({
+        url: serverHost + photoLikes_API+"/"+likeData,
         type: "DELETE",
         headers: API.getBearerAuthorizationToken(),
         success: () => {
