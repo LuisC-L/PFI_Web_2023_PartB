@@ -482,18 +482,23 @@ async function renderPhotosList() {
             let image = photo.Image
             let length = 0;
             if (image !== "") {
-                if (photo.OwnerId === loggedUser.Id || loggedUser.isAdmin) {
+                    if(loggedUser.isAdmin || loggedUser.Id === photo.OwnerId || photo.Shared === true)
                     $("#content .photosLayout").append(`
                         <div class="photoLayout">
                             <div class="photoTitleContainer">
                                 <span class="photoTitle">${photo.Title}</span>
+                                ${photo.OwnerId === loggedUser.Id || loggedUser.isAdmin ? `
                                 <span><i class="menuIcon fa-solid fa-pencil" data-photo-id="${photo.Id}" id="${photo.Id}modify"></i></span>
-                                <span><i class="menuIcon fa-solid fa-trash" data-photo-id="${photo.Id}" id="${photo.Id}delete"></i></span>
+                                <span><i class="menuIcon fa-solid fa-trash" data-photo-id="${photo.Id}" id="${photo.Id}delete"></i></span>` : ''}
                             </div>
                             <div class="photoContainer">
+                                ${photo.OwnerId === loggedUser.Id || loggedUser.isAdmin ? `
                                 <div class="AvatarOverlay">
-                                    ${ownerAvatar(photo, photo.Shared)}
-                                </div>
+                                    ${ownerAvatar(photo,photo.Shared)}
+                                </div>` : `
+                                <div class="AvatarOverlay">
+                                    ${ownerAvatar(photo,false)}
+                                </div>`}
                                 <img src="${photo.Image}" class="photoImage" id="${photo.Id}">
                             </div>
                             <span class="photoCreationDate">
@@ -517,6 +522,7 @@ async function renderPhotosList() {
                         }
                     });
                     $(".LikeContainer").hide();
+
                     // Attach click event to the modifyIcon
                     $("#" + photo.Id + "modify").on("click", function (event) {
                         if (photo.OwnerId === loggedUser || loggedUser.isAdmin)
@@ -528,29 +534,29 @@ async function renderPhotosList() {
                         if (photo.OwnerId === loggedUser || loggedUser.isAdmin)
                             renderConfirmDeletePhoto(photo)
                     });
-                } else {
-                    $("#content .photosLayout").append(`
-                <div class="photoLayout">
-                    <div class="photoTitleContainer">
-                        <span class="photoTitle">${photo.Title}</span>
-                        <span></span>
-                    </div>
-                    <div class="photoContainer">
-                                <div class="AvatarOverlay">
-                                    ${ownerAvatar(photo, photo.Shared)}
-                                </div>
-                                <img src="${photo.Image}" class="photoImage" id="${photo.Id}">
-                            </div>
-                    <span class="photoCreationDate">
-                        ${photo.Date}
-                        <div style="float: right">
-                            nbLikes
-                            <i class="fa-regular fa-thumbs-up" id="${photo.Id}like" ></i>
-                        </div>
-                     </span>
-                </div>
-                `);
-                }
+                // } else if(photo.Shared === true || loggedUser.isAdmin){
+                //  $("#content .photosLayout").append(`
+                // <div class="photoLayout">
+                //     <div class="photoTitleContainer">
+                //         <span class="photoTitle">${photo.Title}</span>
+                //         <span></span>
+                //     </div>
+                //     <div class="photoContainer">
+                //                 <div class="AvatarOverlay">
+                //                     ${ownerAvatar(photo,photo.Shared)}
+                //                 </div>
+                //                 <img src="${photo.Image}" class="photoImage" id="${photo.Id}">
+                //             </div>
+                //     <span class="photoCreationDate">
+                //         ${photo.Date}
+                //         <div style="float: right">
+                //             nbLikes
+                //             <i class="fa-regular fa-thumbs-up" id="${photo.Id}like" ></i>
+                //         </div>
+                //      </span>
+                // </div>
+                // `);
+                // }
 
                 $("#" + photo.Id).on("click", function (event) {
                     renderPhotoDetails(photo);
