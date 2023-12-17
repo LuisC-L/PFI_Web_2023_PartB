@@ -16,6 +16,10 @@ let limit;
 let HorizontalPhotosCount;
 let VerticalPhotosCount;
 let offset = 0;
+//
+let whiteThumbs = "fa-regular fa-thumbs-up";
+let blueThumbs = "fa fa-thumbs-up";
+let likeDetail = 0;
 
 Init_UI();
 
@@ -44,12 +48,12 @@ function getViewPortPhotosRanges() {
         $("#content").innerWidth() / photoContainerWidth
     );
     limit = (VerticalPhotosCount + 1) * HorizontalPhotosCount;
-    console.log(
-        "VerticalPhotosCount:",
-        VerticalPhotosCount,
-        "HorizontalPhotosCount:",
-        HorizontalPhotosCount
-    );
+    // console.log(
+    //     "VerticalPhotosCount:",
+    //     VerticalPhotosCount,
+    //     "HorizontalPhotosCount:",
+    //     HorizontalPhotosCount
+    // );
     offset = 0;
 }
 
@@ -89,12 +93,6 @@ function attachCmd() {
     $("#renderManageUsersMenuCmd").on("click", renderManageUsers);
     $("#editProfileCmd").on("click", renderEditProfileForm);
     $("#aboutCmd").on("click", renderAbout);
-}
-function addLike(){
-    console.log("add like");
-}
-function removeLike(){
-    console.log("remove like");
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -477,10 +475,11 @@ async function renderPhotosList() {
 
         const {data: photos, ETag} = result;
         let  loggedUser = API.retrieveLoggedUser();
-
         for (let i = 0; i < photos.length; i++) {
             const photo = photos[i];
+            let list = await API.getLikesPhoto(photo);
             let image = photo.Image
+            let length =0;
             if (image !== "") {
                 if (photo.OwnerId === loggedUser.Id || loggedUser.isAdmin) {
                     $("#content .photosLayout").append(`
@@ -499,13 +498,24 @@ async function renderPhotosList() {
                             <span class="photoCreationDate">
                                 ${photo.Date}
                                 <div style="float: right">
-                                    nbLikes
-                                <i class="fa-regular fa-thumbs-up"></i>
+                                    <div id="likeCount" style="float: left;margin-right: 3px;">${length}</div>
+                                <i class="fa-regular fa-thumbs-up" id="like"></i>
+                                <div class="LikeContainer">
+                                    <div class="likesSummary"></div>
+                                </div>
                                 </div>
                             </span>
                         </div>
                     `);
+                    list.forEach(like => {
+                        if (like.UserId === loggedUser.Id && like.PhotoId === photo.Id) {
+                            $("#like").removeClass(whiteThumbs).addClass(blueThumbs);
+                            length++;
+                            $("#likeCount").text(length);
+                        }
+                    });
 
+                    $(".LikeContainer").hide();
                     // Attach click event to the modifyIcon
                     $("#" + photo.Id + "modify").on("click", function (event) {
                         if(photo.OwnerId === loggedUser || loggedUser.isAdmin)
@@ -539,15 +549,14 @@ async function renderPhotosList() {
                      </span>
                 </div>
                 `);
+                }
 
                 $("#" + photo.Id).on("click", function (event) {
                     renderPhotoDetails(photo);
                 });
-                }
             } else renderError("Erreur avec l'affichage des photos...");
         }
         $("#content").append(`</div>`);
-
     } catch (error) {
         console.error('Error fetching photos:', error);
 
@@ -620,7 +629,7 @@ function renderModifyPhotoForm(photo) {
         updatedPhoto['Description'] = photoData.Description;
         updatedPhoto['Image'] = photoData.Image;
 
-        const currentDate = new Date();
+        const currentDate = photo.Date;
 
         const formattedDate = currentDate.toLocaleString('fr-FR', {
             weekday: 'long',
@@ -644,7 +653,6 @@ function renderModifyPhotoForm(photo) {
 
 async function renderPhotoDetails(photo) {
     eraseContent();
-    // let user = (await API.GetAccount(photo.OwnerId)).data;
     let loggedUser = API.retrieveLoggedUser();
     UpdateHeader("Détails", "verify");
     $("#newPhotoCmd").hide();
@@ -661,7 +669,12 @@ async function renderPhotoDetails(photo) {
             <div class="dropdown-divider"></div>
     `);
     }
-
+    let list = await API.getLikesPhoto(photo.Id);
+    likeDetail = 0;
+    list.forEach(like => {
+        if(like.PhotoId === photo.Id)
+            likeDetail++;
+    });
     $("#content").append(`
         <div class="photoLayout">
             <span class="photoDetailsTitle">${photo.Title}</span>
@@ -669,14 +682,86 @@ async function renderPhotoDetails(photo) {
             <span class="photoDetailsCreationDate">
                 ${photo.Date}    
                 <div style="float: right">
-                    nbLikes
-                    <i class="fa-regular fa-thumbs-up"></i>
+                    <div id="likeCount" style="float: left;margin-right: 3px;">${likeDetail}</div>
+                    <i class="fa-regular fa-thumbs-up" id="like"></i>
+                    
+                    <div class="LikeContainer">
+                        <div class="likesSummary">
+                        </div>
+                    </div>
                 </div>
             </span>
             
             <span class="photoDetailsDescription">${photo.Description}</span>
         </div>
     `);
+    await getLikesList(photo,loggedUser,list);
+    await cmdPhotoDetails(photo,loggedUser,true,list);
+}
+async function cmdPhotoDetails(photo,loggedUser,inDetails = false,list){
+    let likeData = {}
+    likeData['UserId'] = loggedUser.Id;
+    likeData['PhotoId'] = photo.Id;
+    likeData['UserAndPhotoId'] = loggedUser.Id+photo.Id;
+    let like = $("#like");
+    let likeInfo = $(".LikeContainer");
+    likeInfo.hide();
+    like.hover(
+        function (e){
+            likeInfo.show();
+        },
+        function (e){
+            likeInfo.hide();
+        }
+    );
+    likeInfo.hover(
+        function (e){
+            likeInfo.show();
+        },
+        function (e){
+            likeInfo.hide();
+        }
+    );
+
+    like.on("click",function (e){
+        if(inDetails){
+            if(like.attr("class") === whiteThumbs){
+                like.removeClass(whiteThumbs).addClass(blueThumbs);
+                API.LikePhoto(likeData)
+            }else if(blueThumbs){
+                let idLike = "";
+                like.removeClass(blueThumbs).addClass(whiteThumbs);
+                list.forEach(like => {
+                    if (like.UserId === loggedUser.Id && like.PhotoId === photo.Id) {
+                        idLike = like.Id;
+                    }
+                });
+                API.dislikePhoto(idLike);
+            }
+            UpdateLike(photo);
+        }
+    });
+}
+async function UpdateLike(photo){
+    let likes = await API.getLikesPhoto();
+    likeDetail =0;
+    likes.forEach(like => {
+        if(like.PhotoId === photo.Id)
+            likeDetail++;
+    });
+    $("#likeCount").text(likeDetail);
+}
+async function getLikesList(photo,loggedUser,list){
+
+    let likeInfo = $(".likesSummary");
+    for (let i = 0; i < list.length; i++) {
+        let user = await API.GetAccount(list[i].UserId);
+        if(loggedUser.Id === user.data.Id && photo.Id === list[i].PhotoId)
+            $("#like").removeClass(whiteThumbs).addClass(blueThumbs);
+        likeInfo.append(`
+        <span>${user.data.Name}</span><br>
+        `);
+    }
 }
 
 function renderVerify() {
