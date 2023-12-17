@@ -477,7 +477,7 @@ async function renderPhotosList() {
 
         const { data: photos, ETag } = result;
         let loggedUser = API.retrieveLoggedUser();
-        let length = 0;  // Initialize outside the loop
+        let length = 0; 
 
         for (let i = 0; i < photos.length; i++) {
             const photo = photos[i];
@@ -517,14 +517,19 @@ async function renderPhotosList() {
                         </div>
                     `);
 
+                    $("#like" + photo.Id).removeClass(blueThumbs).addClass(whiteThumbs);
+                
+                    let length2 = 0;
+                
                     list.forEach(like => {
                         if (photo.Id === like.PhotoId) {
-                            $("#like"+photo.Id).removeClass(whiteThumbs).addClass(blueThumbs);
-                            console.log(like);
-                            length++;
-                            $("#likeCount"+photo.Id).text(length);
+                            $("#like" + photo.Id).removeClass(whiteThumbs).addClass(blueThumbs);
+                            length2++;
                         }
                     });
+                
+                    $("#likeCount" + photo.Id).text(length2);
+                
                     $(".LikeContainer").hide();
 
                     // Attach click event to the modifyIcon
